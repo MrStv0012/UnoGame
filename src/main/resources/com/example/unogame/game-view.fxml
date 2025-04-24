@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Pos?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.example.unogame.GameViewController"
+            stylesheets="@styles.css">
+
+    <!-- Mano de la CPU (reversos) -->
+    <top>
+        <HBox fx:id="cpuHand"
+              styleClass="hbox-hand" />
+    </top>
+
+    <!-- Mazo y pila de descartes -->
+    <center>
+        <StackPane fx:id="centerPane">
+            <ImageView fx:id="deckView"
+                       fitWidth="100"
+                       preserveRatio="true" />
+            <ImageView fx:id="discardPileView"
+                       fitWidth="100"
+                       preserveRatio="true"
+                       styleClass="discard-pile" />
+        </StackPane>
+    </center>
+
+    <!-- Mano del usuario -->
+    <bottom>
+        <HBox fx:id="userHand"
+              styleClass="hbox-hand" />
+    </bottom>
+</BorderPane>
