@@ -1,6 +1,7 @@
 package com.example.unogame.model;
 
 public class UnoCard {
+
     public enum Color {
         RED, BLUE, GREEN, YELLOW, WILD;
     }
@@ -70,3 +71,4 @@ public class UnoCard {
         }
     }
 }
+

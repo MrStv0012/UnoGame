@@ -1,3 +1,4 @@
+
 package com.example.unogame.controller;
 
 import com.example.unogame.model.UnoCard;
@@ -5,12 +6,14 @@ import com.example.unogame.model.UnoDeck;
 import javafx.animation.*;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
+
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.util.Duration;
+
 
 
 import java.util.List;
@@ -32,6 +35,7 @@ public class GameViewController {
     @FXML
     private void initialize() {
         String prefix = "/com/example/unogame/cards-uno/";
+
 
         // Inicializar mazo
         deck = new UnoDeck();
@@ -71,15 +75,18 @@ public class GameViewController {
     }
 
     private void dealCardsToHand(List<String> cardPaths, HBox hand, boolean isCpu) {
+
         SequentialTransition seq = new SequentialTransition();
 
         for (int i = 0; i < cardPaths.size(); i++) {
             String path = cardPaths.get(i);
+
             ImageView card = createCardImage(path, isCpu);
             hand.getChildren().add(card);
 
 
             setupDealAnimation(card, i, seq);
+
         }
 
         seq.play();
@@ -88,14 +95,17 @@ public class GameViewController {
     private ImageView createCardImage(String resourcePath, boolean isCpu) {
         ImageView iv = new ImageView(new Image(
                 Objects.requireNonNull(getClass().getResourceAsStream(resourcePath))
+
         ));
         iv.setFitWidth(80);
         iv.setPreserveRatio(true);
         iv.getStyleClass().add("card-image");
 
+
         if (!isCpu) {
             iv.addEventHandler(MouseEvent.MOUSE_CLICKED, this::handleCardClick);
         }
+
 
         return iv;
     }
@@ -148,4 +158,5 @@ public class GameViewController {
         pt.setDelay(Duration.millis(index * 100));
         seq.getChildren().add(pt);
     }
+
 }
