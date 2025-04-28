@@ -21,7 +21,7 @@ public class GameViewController {
     @FXML
     private void initialize() {
         String prefix = "/com/example/unogame/cards-uno/";
-        String back = "0_blue.png";  // ajusta al nombre del reverso que quieras usar
+        String back = "wild.png" ;  // ajusta al nombre del reverso que quieras usar
 
         // Carga inicial de mazo y descarte
         deckView.setImage(new Image(
@@ -41,13 +41,14 @@ public class GameViewController {
         ));
 
         dealInitialCardsCpu(List.of(
-                prefix + back,
-                prefix + back,
-                prefix + back,
-                prefix + back,
-                prefix + back
+                prefix + "card_uno.png",
+                prefix + "card_uno.png",
+                prefix + "card_uno.png",
+                prefix + "card_uno.png",
+                prefix + "card_uno.png"
         ));
     }
+
 
     /**
      * Anima el reparto de N cartas desde el mazo al HBox userHand.
