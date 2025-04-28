@@ -5,74 +5,65 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
-public class UnoDeck2 {
+
+public class UnoDeck {
     private final List<UnoCard> cards = new ArrayList<>();
+    private List<UnoCard> discardPile = new ArrayList<>();
     private final Random rng = new Random();
 
-    /**
-     * Crea y baraja la baraja por primera vez.
-     */
-    public UnoDeck2() {
+    public UnoDeck() {
         reset();
         shuffle();
-}
+    }
 
     public void reset() {
         cards.clear();
-        // 1) Colores básicos
+
+        // Cartas normales (0-9) por color
         for (UnoCard.Color color : UnoCard.Color.values()) {
-            if (color == UnoCard.Color.WILD){
-                continue;
-            }
-            cards.add(new UnoCard(color, UnoCard.Value.getValue(0)));
+            if (color == UnoCard.Color.WILD) continue;
 
-            for (int j = 1; j < 10; j++) {
-                UnoCard.Value v = UnoCard.Value.getValue(j);
-                cards.add(new UnoCard(color, v));
-                cards.add(new UnoCard(color, v));
-            }
+            // Un solo cero por color
+            cards.add(new UnoCard(color, UnoCard.Value.ZERO));
 
-            // Dos copias de cada especial por color
-            for (UnoCard.Value special : List.of(
-                    UnoCard.Value.DRAW_TWO,
-                    UnoCard.Value.SKIP,
-                    UnoCard.Value.REVERSE)) {
-                cards.add(new UnoCard(color, special));
-                cards.add(new UnoCard(color, special));
+            // Una de cada número del 1-9 por color
+            for (int i = 1; i <= 9; i++) {
+                cards.add(new UnoCard(color, UnoCard.Value.getValue(i)));
             }
+            for (int i = 1; i <= 2; i++) {
+                // Cartas especiales por color
+                cards.add(new UnoCard(color, UnoCard.Value.SKIP));
+                cards.add(new UnoCard(color, UnoCard.Value.REVERSE));
+                cards.add(new UnoCard(color, UnoCard.Value.DRAW_TWO));
+            }
+        }
 
-            // 2) Comodines
-            for (int i = 0; i < 4; i++) {
-                cards.add(new UnoCard(UnoCard.Color.WILD, UnoCard.Value.WILD));
-                cards.add(new UnoCard(UnoCard.Color.WILD, UnoCard.Value.WILD_DRAW_FOUR));
-            }
+        // Comodines
+        for (int i = 0; i < 4; i++) {
+            cards.add(new UnoCard(UnoCard.Color.WILD, UnoCard.Value.WILD));
+            cards.add(new UnoCard(UnoCard.Color.WILD, UnoCard.Value.WILD_DRAW_FOUR));
         }
     }
 
-    /** Baraja aleatoriamente las cartas usando Fisher–Yates. */
+
     public void shuffle() {
         Collections.shuffle(cards, rng);
     }
 
-    /**
-     * Roba una carta del tope de la baraja.
-     * @return la carta robada
-     * @throws IllegalStateException si no quedan cartas
-     */
+
     public UnoCard drawCard() {
         if (cards.isEmpty()) {
-            throw new IllegalStateException("No hay cartas en el mazo");
+            refillFromDiscard();
+
         }
         return cards.remove(cards.size() - 1);
     }
 
-    /**
-     * Roba n cartas.
-     * @throws IllegalArgumentException si n < 0 o n > tamaño actual
-     */
+
     public List<UnoCard> drawCards(int n) {
         if (n < 0 || n > cards.size()) {
-            throw new IllegalArgumentException("Cannot draw " + n + " cards");
+            throw new IllegalArgumentException("No se pueden robar " + n + " cartas");
+
         }
         List<UnoCard> hand = new ArrayList<>();
         for (int i = 0; i < n; i++) {
@@ -81,8 +72,34 @@ public class UnoDeck2 {
         return hand;
     }
 
-    /** @return cuántas cartas quedan en el mazo */
+    public void addToDiscardPile(UnoCard card) {
+        discardPile.add(card);
+    }
+
+    public UnoCard getTopDiscard() {
+        if (discardPile.isEmpty()) {
+            throw new IllegalStateException("No hay cartas en el descarte");
+        }
+        return discardPile.get(discardPile.size() - 1);
+    }
+
+    private void refillFromDiscard() {
+        if (discardPile.size() > 1) {
+
+            UnoCard lastCard = discardPile.remove(discardPile.size() - 1);
+
+            cards.addAll(discardPile);
+            discardPile.clear();
+            discardPile.add(lastCard);
+
+            shuffle();
+        } else {
+            throw new IllegalStateException("No hay cartas disponibles");
+        }
+    }
+
     public int size() {
         return cards.size();
     }
 }
+

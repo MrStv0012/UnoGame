@@ -1,37 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?import javafx.geometry.Pos?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
 
 <BorderPane xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="com.example.unogame.GameViewController"
+            fx:controller="com.example.unogame.controller.GameViewController"
             stylesheets="@styles.css">
 
-    <!-- Mano de la CPU (reversos) -->
+
     <top>
-        <HBox fx:id="cpuHand"
-              styleClass="hbox-hand" />
+        <HBox fx:id="cpuHand" styleClass="hbox-hand" />
     </top>
 
-    <!-- Mazo y pila de descartes -->
+
     <center>
-        <StackPane fx:id="centerPane">
-            <ImageView fx:id="deckView"
-                       fitWidth="100"
-                       preserveRatio="true" />
-            <ImageView fx:id="discardPileView"
-                       fitWidth="100"
-                       preserveRatio="true"
-                       styleClass="discard-pile" />
+        <StackPane fx:id="centerPane" alignment="CENTER">
+            <HBox spacing="20" alignment="CENTER">
+                <ImageView fx:id="deckView" fitWidth="100" preserveRatio="true" />
+                <ImageView fx:id="discardPileView" fitWidth="100" preserveRatio="true"
+                           styleClass="discard-pile" />
+            </HBox>
         </StackPane>
     </center>
 
-    <!-- Mano del usuario -->
+
     <bottom>
-        <HBox fx:id="userHand"
-              styleClass="hbox-hand" />
+        <VBox spacing="10" alignment="CENTER">
+            <HBox fx:id="userHand" styleClass="hbox-hand" />
+            <Button fx:id="unoButton" text="UNO!" visible="false"
+                    styleClass="uno-button" />
+        </VBox>
     </bottom>
 </BorderPane>

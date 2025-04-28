@@ -5,4 +5,6 @@ module com.example.unogame {
 
     opens com.example.unogame to javafx.fxml;
     exports com.example.unogame;
+    exports com.example.unogame.controller;
+    opens com.example.unogame.controller to javafx.fxml;
 }

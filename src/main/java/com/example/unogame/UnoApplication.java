@@ -6,7 +6,11 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
-public class HelloApplication extends Application {
+
+import java.util.Objects;
+
+public class UnoApplication extends Application {
+
     @Override
     public void start(Stage stage) throws Exception {
         FXMLLoader loader = new FXMLLoader(
@@ -15,9 +19,10 @@ public class HelloApplication extends Application {
         Parent root = loader.load();
 
         Scene scene = new Scene(root, 800, 600);
-        // Carga CSS (está junto al FXML en el mismo paquete)
+
         scene.getStylesheets().add(
-                getClass().getResource("/com/example/unogame/styles.css")
+                Objects.requireNonNull(getClass().getResource("/com/example/unogame/styles.css"))
+
                         .toExternalForm()
         );
 
