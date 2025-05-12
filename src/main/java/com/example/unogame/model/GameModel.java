@@ -4,9 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class GameModel {
-    private UnoDeck deck;
-    private List<UnoCard> userHand;
-    private List<UnoCard> cpuHand;
+    private final UnoDeck deck;
+    private final List<UnoCard> userHand;
+    private final List<UnoCard> cpuHand;
     private boolean isUserTurn;
     private UnoCard topDiscard;
     private UnoCard.Color currentColor;
@@ -32,7 +32,7 @@ public class GameModel {
         if (topDiscard.getValue() == UnoCard.Value.SKIP ||
                 topDiscard.getValue() == UnoCard.Value.REVERSE) {
             // Si la primera carta es SKIP o REVERSE, la CPU pierde su turno
-            isUserTurn = true;
+            isUserTurn = false;
 
         } else if (topDiscard.getValue() == UnoCard.Value.DRAW_TWO ||
                 topDiscard.getValue() == UnoCard.Value.WILD_DRAW_FOUR) {
