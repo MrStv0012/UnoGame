@@ -83,7 +83,7 @@ public class UnoDeck {
         return discardPile.get(discardPile.size() - 1);
     }
 
-    private void refillFromDiscard() {
+    public void refillFromDiscard() {
         if (discardPile.size() > 1) {
 
             UnoCard lastCard = discardPile.remove(discardPile.size() - 1);
