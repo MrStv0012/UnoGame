@@ -63,7 +63,28 @@ public class GameModel {
     }
 
     // --- Lógica principal ---
+
+
+
+
+    public boolean canUserPlay() {
+        return canPlayAnyCard(userHand);
+    }
+
+    public boolean canPlayAnyCard(List<UnoCard> hand) {
+        for (UnoCard card : hand) {
+            if (isValidPlay(card)) {
+                return true;
+            }
+        }
+        return false;
+    }
     public boolean isValidPlay(UnoCard card) {
+        // Si el juego ha terminado, ninguna carta es jugable
+        if (isGameOver()) {
+            return false;
+        }
+
         // Si es un comodín, siempre es válido
         if (card.getColor() == UnoCard.Color.WILD) {
             return true;
@@ -76,19 +97,6 @@ public class GameModel {
 
         // Verificar si los valores coinciden
         return card.getValue() == topDiscard.getValue();
-    }
-
-    public boolean canPlayAnyCard(List<UnoCard> hand) {
-        for (UnoCard card : hand) {
-            if (isValidPlay(card)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public boolean canUserPlay() {
-        return canPlayAnyCard(userHand);
     }
 
     public void playUserCard(UnoCard card) {

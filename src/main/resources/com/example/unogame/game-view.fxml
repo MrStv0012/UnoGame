@@ -32,8 +32,8 @@
     <bottom>
         <VBox spacing="10" alignment="CENTER">
             <HBox fx:id="userHand" styleClass="hbox-hand" />
-            <Button fx:id="unoButton" text="UNO!" visible="false"
-                    styleClass="uno-button" />
+            <Button fx:id="unoButton" text="UNO!" visible="false" styleClass="uno-button" />
+            <Button fx:id="catchCpuButton" text="PILLADO!" visible="false" styleClass="uno-button" />
         </VBox>
     </bottom>
 </BorderPane>
