@@ -34,6 +34,7 @@
             <HBox fx:id="userHand" styleClass="hbox-hand" />
             <Button fx:id="unoButton" text="UNO!" visible="false"
                     styleClass="uno-button" />
+            <Button fx:id="catchCpuButton" text="¡Atrapar CPU!" visible="false" />
         </VBox>
     </bottom>
 </BorderPane>

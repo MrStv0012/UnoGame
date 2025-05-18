@@ -1,5 +1,9 @@
 package com.example.unogame.model;
 
+import com.example.unogame.exceptions.DeckEmptyException;
+import com.example.unogame.exceptions.GameRuleException;
+import com.example.unogame.exceptions.InvalidCardPlayException;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -12,7 +16,7 @@ public class GameModel {
     private UnoCard.Color currentColor;
     private boolean skipNextTurn; // Para manejar SKIP y DRAW_TWO correctamente
 
-    public GameModel() {
+    public GameModel() throws DeckEmptyException {
         this.deck = new UnoDeck();
         this.userHand = new ArrayList<>();
         this.cpuHand = new ArrayList<>();
@@ -21,7 +25,7 @@ public class GameModel {
         initializeGame();
     }
 
-    private void initializeGame() {
+    private void initializeGame() throws DeckEmptyException {
 
         userHand.addAll(deck.drawCards(5));
         cpuHand.addAll(deck.drawCards(5));
@@ -44,14 +48,17 @@ public class GameModel {
         }
     }
 
-    public UnoCard drawCard(boolean isUser) {
-        UnoCard drawnCard = deck.drawCard(); // UnoDeck ya maneja si hay que recargar
-        if (isUser) {
-            userHand.add(drawnCard);
-        } else {
-            cpuHand.add(drawnCard);
+    public UnoCard drawCard() throws DeckEmptyException {
+        if (deck.size() == 0) {
+            if (deck.discardSize() <= 1) {
+                throw new DeckEmptyException("No quedan cartas en el mazo ni en el descarte");
+            }
+            deck.refillFromDiscard();
         }
-        return drawnCard;
+        if (deck.size() == 0) {
+            throw new DeckEmptyException("No quedan cartas disponibles");
+        }
+        return deck.drawCard();
     }
 
     public void setWildColor(UnoCard.Color color) {
@@ -62,8 +69,25 @@ public class GameModel {
         return currentColor != null ? currentColor : topDiscard.getColor();
     }
 
-    // --- Lógica principal ---
+    public boolean canUserPlay() {
+        return canPlayAnyCard(userHand);
+    }
+
+    public boolean canPlayAnyCard(List<UnoCard> hand) {
+        for (UnoCard card : hand) {
+            if (isValidPlay(card)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public boolean isValidPlay(UnoCard card) {
+        // Si el juego ha terminado, ninguna carta es jugable
+        if (isGameOver()) {
+            return false;
+        }
+
         // Si es un comodín, siempre es válido
         if (card.getColor() == UnoCard.Color.WILD) {
             return true;
@@ -78,71 +102,75 @@ public class GameModel {
         return card.getValue() == topDiscard.getValue();
     }
 
-    public boolean canPlayAnyCard(List<UnoCard> hand) {
-        for (UnoCard card : hand) {
-            if (isValidPlay(card)) {
-                return true;
-            }
+    /**
+     * Juega una carta para el jugador especificado
+     * @param card La carta a jugar (null para CPU selecciona automáticamente)
+     * @param isUser true si es el usuario, false si es la CPU
+     * @return La carta jugada o null si no se pudo jugar ninguna
+     */
+    public UnoCard playCard(UnoCard card, boolean isUser) throws InvalidCardPlayException, DeckEmptyException {
+        // Evitar cambios de estado si el juego ya terminó
+        if (isGameOver()) {
+            throw new GameRuleException("El juego ha terminado, no se pueden jugar más cartas.");
         }
-        return false;
-    }
 
-    public boolean canUserPlay() {
-        return canPlayAnyCard(userHand);
-    }
+        List<UnoCard> hand = isUser ? userHand : cpuHand;
 
-    public void playUserCard(UnoCard card) {
-        if (isValidPlay(card)) {
-            userHand.remove(card);
+        // Si no se proporciona carta (CPU), seleccionar la primera válida
+        if (card == null && !isUser) {
+            for (UnoCard cpuCard : hand) {
+                if (isValidPlay(cpuCard)) {
+                    card = cpuCard;
+                    break;
+                }
+            }
+            // No se encontró carta válida
+            if (card == null) return null;
+        }
+
+        // Verificar que la carta sea válida
+        if (!isValidPlay(card)) {
+            throw new InvalidCardPlayException("La carta seleccionada no es válida para jugar.");
+        }
+
+        // Verificar que la carta esté en la mano del jugador
+        if (!hand.contains(card)) {
+            throw new InvalidCardPlayException("La carta seleccionada no está en tu mano.");
+        }
+
+        // Jugar la carta
+        hand.remove(card);
+        try {
             deck.addToDiscardPile(card);
-            topDiscard = card;
-
-            // Restablecer el color actual si no es una carta comodín
-            if (card.getColor() != UnoCard.Color.WILD) {
-                currentColor = null;
-            }
-
-            applyCardEffect(card, false);
-
-            // Solo cambiamos el turno si no se debe saltar
-            if (!skipNextTurn) {
-                switchTurn();
-            } else {
-                skipNextTurn = false; // Restablecer la bandera
-            }
+        } catch (Exception e) {
+            // Si ocurre un error, devolver la carta a la mano y propagar la excepción
+            hand.add(card);
+            throw new GameRuleException("Error al agregar carta al descarte: " + e.getMessage());
         }
-    }
+        topDiscard = card;
 
-    public UnoCard playCpuCard() {
-        for (UnoCard card : cpuHand) {
-            if (isValidPlay(card)) {
-                cpuHand.remove(card);
-                deck.addToDiscardPile(card);
-                topDiscard = card;
-
-                // Restablecer el color actual si no es una carta comodín
-                if (card.getColor() != UnoCard.Color.WILD) {
-                    currentColor = null;
-                } else {
-                    // La CPU elige un color (simple: elegir el más común en su mano)
-                    currentColor = chooseBestColorForCpu();
-                }
-
-                applyCardEffect(card, true);
-
-                // Solo cambiamos el turno si no se debe saltar
-                if (!skipNextTurn) {
-                    switchTurn();
-                } else {
-                    skipNextTurn = false; // Restablecer la bandera
-                }
-
-                return card;
-            }
+        // Manejar color para comodines
+        if (card.getColor() != UnoCard.Color.WILD) {
+            currentColor = null;
+        } else if (!isUser) {
+            // Solo para CPU: elegir automáticamente el mejor color
+            currentColor = chooseBestColorForCpu();
         }
-        return null; // No hay carta válida
-    }
+        // Para el usuario, el color se establece mediante setWildColor()
 
+        // Aplicar efectos especiales
+        applyCardEffect(card, !isUser);
+
+        // Manejar turnos
+        if (!skipNextTurn) {
+            switchTurn();
+        } else {
+            skipNextTurn = false;
+        }
+
+        return card;
+    }
+    
     private UnoCard.Color chooseBestColorForCpu() {
         int[] colorCount = new int[4]; // RED, BLUE, GREEN, YELLOW
 
@@ -165,47 +193,72 @@ public class GameModel {
                 UnoCard.Color.values()[maxIndex] : UnoCard.Color.RED;
     }
 
-    public void applyCardEffect(UnoCard card, boolean isCpuTurn) {
-        switch (card.getValue()) {
-            case DRAW_TWO:
-                drawCardsForOpponent(2);
-                skipNextTurn = true; // El oponente pierde su turno
-                break;
-            case WILD_DRAW_FOUR:
-                drawCardsForOpponent(4);
-                skipNextTurn = true; // El oponente pierde su turno
-                // El color será elegido después
-                break;
-            case SKIP:
-            case REVERSE:
-                skipNextTurn = true; // El oponente pierde su turno
-                break;
+    public void applyCardEffect(UnoCard card, boolean isCpuTurn) throws DeckEmptyException {
+        new CardEffectHandler().applyEffect(card, isCpuTurn);
+    }
 
-            case WILD:
-                // El color será elegido después
-                break;
-            default:
-                // Cartas normales no tienen efecto especial
-                break;
+    private class CardEffectHandler {
+        public void applyEffect(UnoCard card, boolean isCpuTurn) throws DeckEmptyException {
+            switch (card.getValue()) {
+                case DRAW_TWO:
+                    for (int i = 0; i < 2; i++) {
+                        if (isCpuTurn) {
+                            drawUserCard();
+                        } else {
+                            drawCpuCard();
+                        }
+                    }
+                    skipNextTurn = true;
+                    break;
+                case WILD_DRAW_FOUR:
+                    for (int i = 0; i < 4; i++) {
+                        if (isCpuTurn) {
+                            drawUserCard();
+                        } else {
+                            drawCpuCard();
+                        }
+                    }
+                    skipNextTurn = true;
+                    break;
+                case SKIP:
+                case REVERSE:
+                    // Para SKIP y REVERSE, simplemente saltamos el siguiente turno
+                    skipNextTurn = true;
+                    break;
+                default:
+                    break;
+            }
         }
     }
 
-    public void drawCardsForOpponent(int count) {
-        if (isUserTurn) {
-            // Si es turno del usuario, la CPU roba cartas
-            for (int i = 0; i < count; i++) {
-                cpuHand.add(deck.drawCard());
-            }
-        } else {
-            // Si es turno de la CPU, el usuario roba cartas
-            for (int i = 0; i < count; i++) {
-                userHand.add(deck.drawCard());
-            }
-        }
+    public UnoCard drawUserCard() throws DeckEmptyException {
+        UnoCard card = drawCard();
+        userHand.add(card);
+        return card;
+    }
+
+    public UnoCard drawCpuCard() throws DeckEmptyException {
+        UnoCard card = drawCard();
+        cpuHand.add(card);
+        return card;
     }
 
     public void switchTurn() {
-        isUserTurn = !isUserTurn;
+        new TurnManager().switchTurn();
+    }
+
+    public class TurnManager {
+        public void switchTurn() {
+            isUserTurn = !isUserTurn;
+        }
+
+        public boolean isSkipNextTurn() {
+            return skipNextTurn;
+        }
+
+        public void setSkipNextTurn(boolean skip) {
+            skipNextTurn = skip;
+        }
     }
 
     // --- Getters ---
