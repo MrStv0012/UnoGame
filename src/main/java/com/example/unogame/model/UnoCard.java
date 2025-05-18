@@ -1,11 +1,26 @@
 package com.example.unogame.model;
 
+/**
+ * Represents a single UNO card with a color and a value.
+ * Provides logic to determine playability.
+ *
+ * @author
+ *   Jhon Steven Angulo Nieves
+ *   Braulio Robledo Delgado
+ * @version 1.0
+ */
 public class UnoCard {
 
+    /**
+     * Enumeration of possible UNO card colors.
+     */
     public enum Color {
         RED, BLUE, GREEN, YELLOW, WILD;
     }
 
+    /**
+     * Enumeration of possible UNO card values.
+     */
     public enum Value {
         ZERO, ONE, TWO, THREE, FOUR, FIVE, SIX, SEVEN, EIGHT, NINE,
         SKIP, REVERSE, DRAW_TWO, WILD, WILD_DRAW_FOUR;
@@ -19,19 +34,41 @@ public class UnoCard {
     private final Color color;
     private final Value value;
 
+    /**
+     * Constructs a new UnoCard with the specified color and value.
+     *
+     * @param color the color of the card.
+     * @param value the value/action of the card.
+     */
     public UnoCard(Color color, Value value) {
         this.color = color;
         this.value = value;
     }
 
+
+    /**
+     * Returns the color of this card.
+     *
+     * @return the card's color.
+     */
     public Color getColor() {
         return color;
     }
 
+    /**
+     * Returns the value of this card.
+     *
+     * @return the card's value.
+     */
     public Value getValue() {
         return value;
     }
 
+    /**
+     * Returns a string representation of the card (e.g., "RED_FIVE").
+     *
+     * @return string combining color and value.
+     */
     public String toString() {
         return color.name() + "_" + value.name();
     }

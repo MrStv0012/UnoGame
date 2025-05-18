@@ -1,14 +1,28 @@
 package com.example.unogame.model;
 
+import com.example.unogame.exceptions.DeckEmptyException;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Random;
 
+/**
+ * Represents the UNO deck, including the draw pile and discard recycling.
+ * Handles shuffling, drawing, and refilling from the discard pile.
+ *
+ * @author
+ *   Jhon Steven Angulo Nieves
+ *   Braulio Robledo Delgado
+ * @version 1.0
+ */
 public class UnoDeck {
     private final List<UnoCard> cards = new ArrayList<>();
     private final List<UnoCard> discardPile = new ArrayList<>();
 
+    /**
+     * Constructs and initializes a full UNO deck of 108 cards,
+     * then shuffles the draw pile.
+     */
     public UnoDeck() {
         initializeDeck();
         shuffle();
@@ -55,14 +69,42 @@ public class UnoDeck {
         Collections.shuffle(cards);
     }
 
-    public UnoCard drawCard() {
+    /**
+     * Draws the top card from the draw pile.
+     *
+     * @return the drawn UnoCard.
+     * @throws DeckEmptyException if the draw pile is empty.
+     */
+    public UnoCard drawCard() throws DeckEmptyException {
         if (cards.isEmpty()) {
-            refillFromDiscard();
+            if (discardPile.size() <= 1) {
+                throw new DeckEmptyException();
+            }
+
+            // Guardar la carta superior del descarte
+            UnoCard topDiscard = discardPile.get(discardPile.size() - 1);
+
+            // Remover la carta superior antes de barajar
+            discardPile.remove(discardPile.size() - 1);
+
+            // Barajar el resto del descarte y convertirlo en el mazo actual
+            Collections.shuffle(discardPile);
+            cards.addAll(discardPile);
+            discardPile.clear();
+
+            // Poner la carta superior de vuelta en el descarte
+            discardPile.add(topDiscard);
         }
-        return cards.remove(cards.size() - 1);
+
+        // Robar la carta superior del mazo
+        if (cards.isEmpty()) {
+            throw new DeckEmptyException("No hay cartas disponibles");
+        }
+        UnoCard card = cards.remove(cards.size() - 1);
+        return card;
     }
 
-    public List<UnoCard> drawCards(int count) {
+    public List<UnoCard> drawCards(int count) throws DeckEmptyException {
         List<UnoCard> drawnCards = new ArrayList<>();
         for (int i = 0; i < count; i++) {
             drawnCards.add(drawCard());
@@ -81,7 +123,12 @@ public class UnoDeck {
         return discardPile.get(discardPile.size() - 1);
     }
 
-    private void refillFromDiscard() {
+    /**
+     * Refills the draw pile from the discard pile except for its top card,
+     * then shuffles the draw pile.
+     *
+     */
+    public void refillFromDiscard() {
         if (discardPile.size() <= 1) {
             throw new IllegalStateException("No hay suficientes cartas para continuar");
         }
@@ -97,7 +144,17 @@ public class UnoDeck {
         shuffle();
     }
 
+    /**
+     * Returns the number of cards remaining in the draw pile.
+     *
+     * @return the size of the draw pile.
+     */
     public int size() { return cards.size(); }
+
+
     public int discardSize() { return discardPile.size(); }
 }
+
+
+
 

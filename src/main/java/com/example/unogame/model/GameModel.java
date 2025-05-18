@@ -1,8 +1,22 @@
 package com.example.unogame.model;
 
+import com.example.unogame.exceptions.DeckEmptyException;
+import com.example.unogame.exceptions.GameRuleException;
+import com.example.unogame.exceptions.InvalidCardPlayException;
+
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Core game state and logic for the UNO Game.
+ * Manages the deck, discard pile, player hands, turn order, and card effects.
+ * All interactions with game data should go through this class.
+ *
+ * @author
+ *   Jhon Steven Angulo Nieves
+ *   Braulio Robledo Delgado
+ * @version 1.0
+ */
 public class GameModel {
     private final UnoDeck deck;
     private final List<UnoCard> userHand;
@@ -12,7 +26,13 @@ public class GameModel {
     private UnoCard.Color currentColor;
     private boolean skipNextTurn; // Para manejar SKIP y DRAW_TWO correctamente
 
-    public GameModel() {
+    /**
+     * Constructs a new GameModel, initializes and shuffles the deck,
+     * deals seven cards to each player, and places one card on the discard pile.
+     *
+     * @throws DeckEmptyException if the deck runs out during initial dealing.
+     */
+    public GameModel() throws DeckEmptyException {
         this.deck = new UnoDeck();
         this.userHand = new ArrayList<>();
         this.cpuHand = new ArrayList<>();
@@ -21,7 +41,7 @@ public class GameModel {
         initializeGame();
     }
 
-    private void initializeGame() {
+    private void initializeGame() throws DeckEmptyException {
 
         userHand.addAll(deck.drawCards(5));
         cpuHand.addAll(deck.drawCards(5));
@@ -44,14 +64,24 @@ public class GameModel {
         }
     }
 
-    public UnoCard drawCard(boolean isUser) {
-        UnoCard drawnCard = deck.drawCard(); // UnoDeck ya maneja si hay que recargar
-        if (isUser) {
-            userHand.add(drawnCard);
-        } else {
-            cpuHand.add(drawnCard);
+    /**
+     * Draws the top card from the deck without adding it to any hand.
+     * If the deck is empty, refills it from the discard pile (keeping the top card).
+     *
+     * @return the drawn UnoCard from the deck.
+     * @throws DeckEmptyException if no cards remain in deck or discard.
+     */
+    public UnoCard drawCard() throws DeckEmptyException {
+        if (deck.size() == 0) {
+            if (deck.discardSize() <= 1) {
+                throw new DeckEmptyException("No quedan cartas en el mazo ni en el descarte");
+            }
+            deck.refillFromDiscard();
         }
-        return drawnCard;
+        if (deck.size() == 0) {
+            throw new DeckEmptyException("No quedan cartas disponibles");
+        }
+        return deck.drawCard();
     }
 
     public void setWildColor(UnoCard.Color color) {
@@ -62,16 +92,18 @@ public class GameModel {
         return currentColor != null ? currentColor : topDiscard.getColor();
     }
 
-    // --- Lógica principal ---
-
-
-
-
+    /**
+     * Determines if the user has at least one playable card against the top discard.
+     *
+     * @return true if a playable card exists; false otherwise.
+     */
     public boolean canUserPlay() {
         return canPlayAnyCard(userHand);
     }
 
     public boolean canPlayAnyCard(List<UnoCard> hand) {
+        if (hand == null || hand.isEmpty()) return false;
+
         for (UnoCard card : hand) {
             if (isValidPlay(card)) {
                 return true;
@@ -79,9 +111,10 @@ public class GameModel {
         }
         return false;
     }
+
     public boolean isValidPlay(UnoCard card) {
         // Si el juego ha terminado, ninguna carta es jugable
-        if (isGameOver()) {
+        if (isGameOver() || card == null) {
             return false;
         }
 
@@ -91,7 +124,8 @@ public class GameModel {
         }
 
         // Verificar color actual (respetando los colores elegidos para comodines)
-        if (card.getColor() == getCurrentColor()) {
+        UnoCard.Color effectiveColor = getCurrentColor();
+        if (card.getColor() == effectiveColor) {
             return true;
         }
 
@@ -99,58 +133,79 @@ public class GameModel {
         return card.getValue() == topDiscard.getValue();
     }
 
-    public void playUserCard(UnoCard card) {
-        if (isValidPlay(card)) {
-            userHand.remove(card);
+    /**
+     * Attempts to play the specified card for the current player.
+     * Validates playability against the top discard and applies special effects.
+     *
+     * @param card      the UnoCard to play.
+     * @param isUser true if the CPU is playing; false for the user.
+     * @return the card placed on the discard pile.
+     * @throws InvalidCardPlayException if the card cannot be legally played.
+     * @throws DeckEmptyException       if a draw effect is triggered but no cards remain.
+     */
+    public UnoCard playCard(UnoCard card, boolean isUser) throws InvalidCardPlayException, DeckEmptyException {
+        // Evitar cambios de estado si el juego ya terminó
+        if (isGameOver()) {
+            throw new GameRuleException("El juego ha terminado, no se pueden jugar más cartas.");
+        }
+
+        List<UnoCard> hand = isUser ? userHand : cpuHand;
+
+        // Si no se proporciona carta (CPU), seleccionar la primera válida
+        if (card == null && !isUser) {
+            for (UnoCard cpuCard : hand) {
+                if (isValidPlay(cpuCard)) {
+                    card = cpuCard;
+                    break;
+                }
+            }
+            // No se encontró carta válida
+            if (card == null) return null;
+        }
+
+        // Verificar que la carta sea válida
+        if (!isValidPlay(card)) {
+            throw new InvalidCardPlayException("La carta seleccionada no es válida para jugar.");
+        }
+
+        // Verificar que la carta esté en la mano del jugador
+        if (!hand.contains(card)) {
+            throw new InvalidCardPlayException("La carta seleccionada no está en tu mano.");
+        }
+
+        // Jugar la carta
+        hand.remove(card);
+        try {
             deck.addToDiscardPile(card);
-            topDiscard = card;
-
-            // Restablecer el color actual si no es una carta comodín
-            if (card.getColor() != UnoCard.Color.WILD) {
-                currentColor = null;
-            }
-
-            applyCardEffect(card, false);
-
-            // Solo cambiamos el turno si no se debe saltar
-            if (!skipNextTurn) {
-                switchTurn();
-            } else {
-                skipNextTurn = false; // Restablecer la bandera
-            }
+        } catch (Exception e) {
+            // Si ocurre un error, devolver la carta a la mano y propagar la excepción
+            hand.add(card);
+            throw new GameRuleException("Error al agregar carta al descarte: " + e.getMessage());
         }
-    }
+        topDiscard = card;
 
-    public UnoCard playCpuCard() {
-        for (UnoCard card : cpuHand) {
-            if (isValidPlay(card)) {
-                cpuHand.remove(card);
-                deck.addToDiscardPile(card);
-                topDiscard = card;
-
-                // Restablecer el color actual si no es una carta comodín
-                if (card.getColor() != UnoCard.Color.WILD) {
-                    currentColor = null;
-                } else {
-                    // La CPU elige un color (simple: elegir el más común en su mano)
-                    currentColor = chooseBestColorForCpu();
-                }
-
-                applyCardEffect(card, true);
-
-                // Solo cambiamos el turno si no se debe saltar
-                if (!skipNextTurn) {
-                    switchTurn();
-                } else {
-                    skipNextTurn = false; // Restablecer la bandera
-                }
-
-                return card;
-            }
+        // Manejar color para comodines
+        if (card.getColor() != UnoCard.Color.WILD) {
+            currentColor = null;
+        } else if (!isUser) {
+            // Solo para CPU: elegir automáticamente el mejor color
+            currentColor = chooseBestColorForCpu();
         }
-        return null; // No hay carta válida
-    }
+        // Para el usuario, el color se establece mediante setWildColor()
 
+        // Aplicar efectos especiales
+        applyCardEffect(card, !isUser);
+
+        // Manejar turnos
+        if (!skipNextTurn) {
+            switchTurn();
+        } else {
+            skipNextTurn = false;
+        }
+
+        return card;
+    }
+    
     private UnoCard.Color chooseBestColorForCpu() {
         int[] colorCount = new int[4]; // RED, BLUE, GREEN, YELLOW
 
@@ -173,53 +228,121 @@ public class GameModel {
                 UnoCard.Color.values()[maxIndex] : UnoCard.Color.RED;
     }
 
-    public void applyCardEffect(UnoCard card, boolean isCpuTurn) {
-        switch (card.getValue()) {
-            case DRAW_TWO:
-                drawCardsForOpponent(2);
-                skipNextTurn = true; // El oponente pierde su turno
-                break;
-            case WILD_DRAW_FOUR:
-                drawCardsForOpponent(4);
-                skipNextTurn = true; // El oponente pierde su turno
-                // El color será elegido después
-                break;
-            case SKIP:
-            case REVERSE:
-                skipNextTurn = true; // El oponente pierde su turno
-                break;
+    public void applyCardEffect(UnoCard card, boolean isCpuTurn) throws DeckEmptyException {
+        new CardEffectHandler().applyEffect(card, isCpuTurn);
+    }
 
-            case WILD:
-                // El color será elegido después
-                break;
-            default:
-                // Cartas normales no tienen efecto especial
-                break;
+    private class CardEffectHandler {
+        public void applyEffect(UnoCard card, boolean isCpuTurn) throws DeckEmptyException {
+            switch (card.getValue()) {
+                case DRAW_TWO:
+                    for (int i = 0; i < 2; i++) {
+                        if (isCpuTurn) {
+                            drawUserCard();
+                        } else {
+                            drawCpuCard();
+                        }
+                    }
+                    skipNextTurn = true;
+                    break;
+                case WILD_DRAW_FOUR:
+                    for (int i = 0; i < 4; i++) {
+                        if (isCpuTurn) {
+                            drawUserCard();
+                        } else {
+                            drawCpuCard();
+                        }
+                    }
+                    skipNextTurn = true;
+                    break;
+                case SKIP:
+                case REVERSE:
+                    // Para SKIP y REVERSE, simplemente saltamos el siguiente turno
+                    skipNextTurn = true;
+                    break;
+                default:
+                    break;
+            }
         }
     }
 
-    public void drawCardsForOpponent(int count) {
-        if (isUserTurn) {
-            // Si es turno del usuario, la CPU roba cartas
-            for (int i = 0; i < count; i++) {
-                cpuHand.add(deck.drawCard());
-            }
-        } else {
-            // Si es turno de la CPU, el usuario roba cartas
-            for (int i = 0; i < count; i++) {
-                userHand.add(deck.drawCard());
-            }
-        }
+    /**
+     * Draws a card from the deck and adds it to the user's hand.
+     *
+     * @return the drawn UnoCard.
+     * @throws DeckEmptyException if no cards remain to draw.
+     */
+    public UnoCard drawUserCard() throws DeckEmptyException {
+        UnoCard card = drawCard();
+        userHand.add(card);
+        return card;
     }
 
+    /**
+     * Draws a card from the deck and adds it to the CPU's hand.
+     *
+     * @return the drawn UnoCard.
+     * @throws DeckEmptyException if no cards remain to draw.
+     */
+    public UnoCard drawCpuCard() throws DeckEmptyException {
+        UnoCard card = drawCard();
+        cpuHand.add(card);
+        return card;
+    }
+
+    /**
+     * Switches the active player, accounting for any skip flags.
+     * If skipNextTurn is set, skips the opponent's turn once.
+     */
     public void switchTurn() {
-        isUserTurn = !isUserTurn;
+        new TurnManager().switchTurn();
     }
 
-    // --- Getters ---
+    public void setUserTurn(boolean isUserTurn) {
+        this.isUserTurn = isUserTurn;
+    }
+
+    private class TurnManager {
+        public void switchTurn() {
+            isUserTurn = !isUserTurn;
+        }
+
+        public boolean isSkipNextTurn() {
+            return skipNextTurn;
+        }
+
+        public void setSkipNextTurn(boolean skip) {
+            skipNextTurn = skip;
+        }
+    }
+
+
+    /**
+     * Returns the current list of UnoCards in the user's hand.
+     *
+     * @return List of UnoCard in the user's hand.
+     */
     public List<UnoCard> getUserHand() { return userHand; }
+
+    /**
+     * Returns the current list of UnoCards in the CPU's hand.
+     *
+     * @return List of UnoCard in the CPU's hand.
+     */
     public List<UnoCard> getCpuHand() { return cpuHand; }
+
+    /**
+     * Returns the card currently on top of the discard pile.
+     *
+     * @return the top UnoCard of the discard pile.
+     */
     public UnoCard getTopDiscard() { return topDiscard; }
+
+    /**
+     * Checks if it is currently the user's turn.
+     *
+     * @return true if it's the user's turn; false otherwise.
+     */
     public boolean isUserTurn() { return isUserTurn; }
 
     // Métodos para comprobar si el juego ha terminado
