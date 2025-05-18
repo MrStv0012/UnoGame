@@ -6,10 +6,23 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Represents the UNO deck, including the draw pile and discard recycling.
+ * Handles shuffling, drawing, and refilling from the discard pile.
+ *
+ * @author
+ *   Jhon Steven Angulo Nieves
+ *   Braulio Robledo Delgado
+ * @version 1.0
+ */
 public class UnoDeck {
     private final List<UnoCard> cards = new ArrayList<>();
     private final List<UnoCard> discardPile = new ArrayList<>();
 
+    /**
+     * Constructs and initializes a full UNO deck of 108 cards,
+     * then shuffles the draw pile.
+     */
     public UnoDeck() {
         initializeDeck();
         shuffle();
@@ -56,6 +69,12 @@ public class UnoDeck {
         Collections.shuffle(cards);
     }
 
+    /**
+     * Draws the top card from the draw pile.
+     *
+     * @return the drawn UnoCard.
+     * @throws DeckEmptyException if the draw pile is empty.
+     */
     public UnoCard drawCard() throws DeckEmptyException {
         if (cards.isEmpty()) {
             if (discardPile.size() <= 1) {
@@ -104,6 +123,11 @@ public class UnoDeck {
         return discardPile.get(discardPile.size() - 1);
     }
 
+    /**
+     * Refills the draw pile from the discard pile except for its top card,
+     * then shuffles the draw pile.
+     *
+     */
     public void refillFromDiscard() {
         if (discardPile.size() <= 1) {
             throw new IllegalStateException("No hay suficientes cartas para continuar");
@@ -120,7 +144,14 @@ public class UnoDeck {
         shuffle();
     }
 
+    /**
+     * Returns the number of cards remaining in the draw pile.
+     *
+     * @return the size of the draw pile.
+     */
     public int size() { return cards.size(); }
+
+
     public int discardSize() { return discardPile.size(); }
 }
 

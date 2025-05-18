@@ -10,6 +10,13 @@ import javafx.util.Duration;
 
 import java.util.Objects;
 
+/**
+ * Responsible for rendering the game UI and animations.
+ *
+ * @authors
+ *   Jhon Steven Angulo Nieves
+ *   Braulio Robledo Delgado
+ */
 public class GameView {
     private final ImageView discardPileView;
     private final String cardPrefix = "/com/example/unogame/cards-uno/";

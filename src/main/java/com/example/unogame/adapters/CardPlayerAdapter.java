@@ -6,6 +6,11 @@ import com.example.unogame.exceptions.InvalidCardPlayException;
 import com.example.unogame.model.UnoCard;
 import com.example.unogame.model.GameModel;
 
+/**
+ * Adapter implementing ICardPlayer for user or CPU.
+ *
+ * @authors Jhon Steven Angulo Nieves, Braulio Robledo Delgado
+ */
 public class CardPlayerAdapter implements ICardPlayer {
     private final GameModel gameModel;
     private final boolean isUser;

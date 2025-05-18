@@ -23,6 +23,20 @@ import javafx.application.Platform;
 
 import java.util.*;
 
+/**
+ * Controller for the main UNO game view.
+ * Manages game initialization, user interactions (card clicks, draw actions, UNO declarations),
+ * CPU actions, and synchronizes view updates with the game model.
+ *
+ * <p>Handles setting up the deck image, dealing initial hands, drawing and playing cards,
+ * responding to special card effects, and animating UI transitions.</p>
+ *
+ * @author
+ *   Jhon Steven Angulo Nieves
+ *   Braulio Robledo Delgado
+ * @version 1.0
+ */
+
 public class GameViewController {
     @FXML private HBox cpuHand;
     @FXML private HBox userHand;
@@ -43,11 +57,23 @@ public class GameViewController {
     private volatile boolean playerCaughtCpu = false;
     private boolean processingClick = false; // Para evitar múltiples clics rápidos
 
+    /**
+     * Initializes the controller after FXML loading: sets up model, view,
+     * threads, and renders the initial game state.
+     *
+     * @throws DeckEmptyException if the deck runs out during setup.
+     */
     @FXML
     private void initialize() throws DeckEmptyException {
         resetGame();
     }
 
+    /**
+     * Resets the game to its starting configuration, stopping all threads,
+     * clearing hands, shuffling the deck, and updating the UI.
+     *
+     * @throws DeckEmptyException if the deck cannot provide enough cards.
+     */
     private void resetGame() throws DeckEmptyException {
         // Ejecutar en el hilo de UI para mayor seguridad
         Platform.runLater(() -> {
@@ -84,6 +110,9 @@ public class GameViewController {
         });
     }
 
+    /**
+     * Stops any running UNO declaration threads for both player and CPU.
+     */
     private void stopAllThreads() {
         // Detener threads existentes
         if (userUnoThread != null) {
@@ -97,6 +126,9 @@ public class GameViewController {
         }
     }
 
+    /**
+     * Sets up the image view for the draw deck on the UI.
+     */
     private void setupDeckImage() {
         deckView.setImage(new Image(Objects.requireNonNull(getClass().getResourceAsStream(prefix + "deck_of_cards.png"))));
 
@@ -108,6 +140,10 @@ public class GameViewController {
         });
     }
 
+
+    /**
+     * Handles the initial card flip from the deck to the discard pile at game start.
+     */
     private void handleInitialCard() {
         UnoCard topCard = gameModel.getTopDiscard();
 
@@ -177,6 +213,12 @@ public class GameViewController {
         });
     }
 
+    /**
+     * Draws a specified number of cards from the deck and updates initial hands.
+     *
+     * @param count number of cards to draw for each player.
+     * @throws DeckEmptyException if there are not enough cards remaining.
+     */
     private void applyInitialDraw(int count) throws DeckEmptyException {
         // Si la carta inicial es un +2 o +4, el jugador roba cartas
         for (int i = 0; i < count; i++) {
@@ -192,6 +234,9 @@ public class GameViewController {
         });
     }
 
+    /**
+     * Deals the initial seven-card hands to the user and CPU.
+     */
     private void dealInitialHands() {
         // Limpiar las manos
         userHand.getChildren().clear();
@@ -214,6 +259,14 @@ public class GameViewController {
         gameView.updateDiscardPile(gameModel.getTopDiscard());
     }
 
+    /**
+     * Creates an ImageView for the specified UnoCard.
+     * Binds click handler for user cards and sets size constraints.
+     *
+     * @param card  the UnoCard model object.
+     * @param isCpu true if creating for CPU hand (no click handler).
+     * @return the configured ImageView for display.
+     */
     private ImageView createCardImage(UnoCard card, boolean isCpu) {
         String imagePath = prefix + card.toFileName();
         ImageView imageView = new ImageView(new Image(Objects.requireNonNull(getClass().getResourceAsStream(imagePath))));
@@ -228,6 +281,12 @@ public class GameViewController {
         return imageView;
     }
 
+
+    /**
+     * Handles a click event on a user's card, validating play and updating model and view.
+     *
+     * @param event the MouseEvent triggered by clicking a card ImageView.
+     */
     private void handleCardClick(MouseEvent event) {
         new CardClickHandler().handle(event);
     }
@@ -310,6 +369,9 @@ public class GameViewController {
         }
     }
 
+    /**
+     * Handles the user drawing one card when no playable cards are available.
+     */
     private void handleDrawCard() {
         if (gameOver || !gameModel.isUserTurn()) return;
 
@@ -350,7 +412,12 @@ public class GameViewController {
         }
     }
 
-
+    /**
+     * Processes special card effects (DRAW_TWO, WILD_DRAW_FOUR) for the played card.
+     * Draws the appropriate number of cards and skips turns as needed.
+     *
+     * @param cardToPlay the UnoCard whose effect is to be applied.
+     */
     private void handleSpecialCardEffects(UnoCard cardToPlay) {
         try {
             if (cardToPlay.getValue() == UnoCard.Value.DRAW_TWO) {
@@ -418,12 +485,14 @@ public class GameViewController {
     }
 
 
+
     /**
-     * Método centralizado para manejar el proceso de robar múltiples cartas.
-     * @param isUser true si las cartas son para el usuario, false si son para la CPU
-     * @param count número de cartas a robar (por defecto 1)
-     * @return Lista de vistas de cartas creadas
-     * @throws DeckEmptyException si no hay más cartas en el mazo
+     * Draws cards into the specified player's hand and updates the UI pane.
+     *
+     * @param isUser true to draw for the user, false for the CPU.
+     * @param count  number of cards to draw.
+     * @return list of ImageViews representing the newly drawn cards.
+     * @throws DeckEmptyException if the deck is empty during drawing.
      */
     private List<ImageView> drawCardAndUpdateHand(boolean isUser, int count)
             throws DeckEmptyException {
@@ -458,7 +527,9 @@ public class GameViewController {
         return cardViews;
     }
 
-
+    /**
+     * Prompts the user with a color choice dialog for wild cards.
+     */
     private void promptColorChoice() {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Elige un color");
@@ -488,6 +559,9 @@ public class GameViewController {
         }
     }
 
+    /**
+     * Executes the CPU's turn logic, selecting and playing a valid card or drawing.
+     */
     private void playCpuTurn() {
         if (gameOver) return;
 
@@ -604,7 +678,9 @@ public class GameViewController {
         });
     }
 
-
+    /**
+     * Sets up the UNO declaration button behavior for the user.
+     */
     private void setupUnoButton() {
         unoButton.setVisible(false);
         unoButton.setOnAction(new UnoButtonHandler());
@@ -625,6 +701,9 @@ public class GameViewController {
         }
     }
 
+    /**
+     * Starts the timer thread for the user's UNO declaration window.
+     */
     private void startUserUnoTimer() {
         if (gameOver) return;
 
@@ -651,6 +730,9 @@ public class GameViewController {
         }
     }
 
+    /**
+     * Starts the timer thread for the CPU's UNO declaration window.
+     */
     private void startCpuUnoTimer() {
         if (gameOver) return;
 
@@ -751,6 +833,10 @@ public class GameViewController {
         }
     }
 
+
+    /**
+     * Sets up the "Catch CPU" button logic for catching CPU UNO calls.
+     */
     private void setupCatchCpuButton() {
         catchCpuButton.setVisible(false);
         catchCpuButton.setOnAction(e -> {

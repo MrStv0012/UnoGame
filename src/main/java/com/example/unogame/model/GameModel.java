@@ -7,6 +7,16 @@ import com.example.unogame.exceptions.InvalidCardPlayException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Core game state and logic for the UNO Game.
+ * Manages the deck, discard pile, player hands, turn order, and card effects.
+ * All interactions with game data should go through this class.
+ *
+ * @author
+ *   Jhon Steven Angulo Nieves
+ *   Braulio Robledo Delgado
+ * @version 1.0
+ */
 public class GameModel {
     private final UnoDeck deck;
     private final List<UnoCard> userHand;
@@ -16,6 +26,12 @@ public class GameModel {
     private UnoCard.Color currentColor;
     private boolean skipNextTurn; // Para manejar SKIP y DRAW_TWO correctamente
 
+    /**
+     * Constructs a new GameModel, initializes and shuffles the deck,
+     * deals seven cards to each player, and places one card on the discard pile.
+     *
+     * @throws DeckEmptyException if the deck runs out during initial dealing.
+     */
     public GameModel() throws DeckEmptyException {
         this.deck = new UnoDeck();
         this.userHand = new ArrayList<>();
@@ -48,6 +64,13 @@ public class GameModel {
         }
     }
 
+    /**
+     * Draws the top card from the deck without adding it to any hand.
+     * If the deck is empty, refills it from the discard pile (keeping the top card).
+     *
+     * @return the drawn UnoCard from the deck.
+     * @throws DeckEmptyException if no cards remain in deck or discard.
+     */
     public UnoCard drawCard() throws DeckEmptyException {
         if (deck.size() == 0) {
             if (deck.discardSize() <= 1) {
@@ -69,8 +92,12 @@ public class GameModel {
         return currentColor != null ? currentColor : topDiscard.getColor();
     }
 
+    /**
+     * Determines if the user has at least one playable card against the top discard.
+     *
+     * @return true if a playable card exists; false otherwise.
+     */
     public boolean canUserPlay() {
-        // Simplemente llama al método genérico para verificar si hay cartas jugables
         return canPlayAnyCard(userHand);
     }
 
@@ -105,11 +132,16 @@ public class GameModel {
         // Verificar si los valores coinciden
         return card.getValue() == topDiscard.getValue();
     }
+
     /**
-     * Juega una carta para el jugador especificado
-     * @param card La carta a jugar (null para CPU selecciona automáticamente)
-     * @param isUser true si es el usuario, false si es la CPU
-     * @return La carta jugada o null si no se pudo jugar ninguna
+     * Attempts to play the specified card for the current player.
+     * Validates playability against the top discard and applies special effects.
+     *
+     * @param card      the UnoCard to play.
+     * @param isUser true if the CPU is playing; false for the user.
+     * @return the card placed on the discard pile.
+     * @throws InvalidCardPlayException if the card cannot be legally played.
+     * @throws DeckEmptyException       if a draw effect is triggered but no cards remain.
      */
     public UnoCard playCard(UnoCard card, boolean isUser) throws InvalidCardPlayException, DeckEmptyException {
         // Evitar cambios de estado si el juego ya terminó
@@ -234,18 +266,34 @@ public class GameModel {
         }
     }
 
+    /**
+     * Draws a card from the deck and adds it to the user's hand.
+     *
+     * @return the drawn UnoCard.
+     * @throws DeckEmptyException if no cards remain to draw.
+     */
     public UnoCard drawUserCard() throws DeckEmptyException {
         UnoCard card = drawCard();
         userHand.add(card);
         return card;
     }
 
+    /**
+     * Draws a card from the deck and adds it to the CPU's hand.
+     *
+     * @return the drawn UnoCard.
+     * @throws DeckEmptyException if no cards remain to draw.
+     */
     public UnoCard drawCpuCard() throws DeckEmptyException {
         UnoCard card = drawCard();
         cpuHand.add(card);
         return card;
     }
 
+    /**
+     * Switches the active player, accounting for any skip flags.
+     * If skipNextTurn is set, skips the opponent's turn once.
+     */
     public void switchTurn() {
         new TurnManager().switchTurn();
     }
@@ -268,10 +316,33 @@ public class GameModel {
         }
     }
 
-    // --- Getters ---
+
+    /**
+     * Returns the current list of UnoCards in the user's hand.
+     *
+     * @return List of UnoCard in the user's hand.
+     */
     public List<UnoCard> getUserHand() { return userHand; }
+
+    /**
+     * Returns the current list of UnoCards in the CPU's hand.
+     *
+     * @return List of UnoCard in the CPU's hand.
+     */
     public List<UnoCard> getCpuHand() { return cpuHand; }
+
+    /**
+     * Returns the card currently on top of the discard pile.
+     *
+     * @return the top UnoCard of the discard pile.
+     */
     public UnoCard getTopDiscard() { return topDiscard; }
+
+    /**
+     * Checks if it is currently the user's turn.
+     *
+     * @return true if it's the user's turn; false otherwise.
+     */
     public boolean isUserTurn() { return isUserTurn; }
 
     // Métodos para comprobar si el juego ha terminado
