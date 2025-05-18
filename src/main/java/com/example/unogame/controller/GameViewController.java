@@ -111,44 +111,70 @@ public class GameViewController {
     private void handleInitialCard() {
         UnoCard topCard = gameModel.getTopDiscard();
 
-        // Si la primera carta es un comodín, el jugador elige color
-        if (topCard.getValue() == UnoCard.Value.WILD ||
-                topCard.getValue() == UnoCard.Value.WILD_DRAW_FOUR) {
+        // Lo primero es actualizar la interfaz gráfica para mostrar la carta inicial
+        gameView.updateDiscardPile(topCard);
 
-            // Retrasar para que se muestre después de inicializar la interfaz
-            Platform.runLater(() -> {
-                promptColorChoice();
-
-                // Si es +4, aplicar efecto (el jugador roba 4)
-                if (topCard.getValue() == UnoCard.Value.WILD_DRAW_FOUR) {
-                    try {
-                        applyInitialDraw(4);
-                    } catch (DeckEmptyException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            });
-        }
-        // Si es otra carta especial, aplicar su efecto
-        else if (topCard.getValue() == UnoCard.Value.DRAW_TWO) {
+        // Usar Platform.runLater para asegurar que esto ocurra después de que la interfaz se haya dibujado
+        Platform.runLater(() -> {
             try {
-                applyInitialDraw(2);
+                // Si la primera carta es un comodín
+                if (topCard.getValue() == UnoCard.Value.WILD ||
+                        topCard.getValue() == UnoCard.Value.WILD_DRAW_FOUR) {
+
+                    // Solicitar elección de color
+                    promptColorChoice();
+
+                    // Si es +4, aplicar efecto (el jugador roba 4)
+                    if (topCard.getValue() == UnoCard.Value.WILD_DRAW_FOUR) {
+                        for (int i = 0; i < 4; i++) {
+                            UnoCard drawnCard = gameModel.drawCard();
+                            ImageView cardView = createCardImage(drawnCard, false);
+                            userHand.getChildren().add(cardView);
+                        }
+                        gameView.showAlertSafely("Carta inicial +4",
+                                "Has robado 4 cartas por la carta inicial.",
+                                Alert.AlertType.INFORMATION);
+                    }
+
+                    // Como es comodín inicial, se confirma que la CPU empieza el turno
+                    gameModel.setUserTurn(true);
+                }
+                // Si es otra carta especial +2
+                else if (topCard.getValue() == UnoCard.Value.DRAW_TWO) {
+                    // El jugador roba 2 cartas
+                    for (int i = 0; i < 2; i++) {
+                        UnoCard drawnCard = gameModel.drawCard();
+                        ImageView cardView = createCardImage(drawnCard, false);
+                        userHand.getChildren().add(cardView);
+                    }
+                    gameView.showAlertSafely("Carta inicial +2",
+                            "Has robado 2 cartas por la carta inicial.",
+                            Alert.AlertType.INFORMATION);
+
+                    // La CPU empieza su turno
+                    gameModel.setUserTurn(true);
+                }
+                // Si es SKIP o REVERSE
+                else if (topCard.getValue() == UnoCard.Value.SKIP ||
+                        topCard.getValue() == UnoCard.Value.REVERSE) {
+                    gameView.showAlertSafely("Turno inicial",
+                            "La carta inicial es un " + topCard.getValue() + ". Comienza la CPU.",
+                            Alert.AlertType.INFORMATION);
+
+                    // La CPU empieza su turno
+                    gameModel.setUserTurn(false);
+
+                    // Programar turno de la CPU con delay
+                    PauseTransition pause = new PauseTransition(Duration.seconds(1.5));
+                    pause.setOnFinished(e -> {
+                        if (!gameOver) playCpuTurn();
+                    });
+                    pause.play();
+                }
             } catch (DeckEmptyException e) {
-                throw new RuntimeException(e);
+                gameView.showAlertSafely("Error", "Error al manejar carta inicial: " + e.getMessage(), Alert.AlertType.ERROR);
             }
-        }
-
-        if (!gameModel.isUserTurn()) {
-            Platform.runLater(() -> {
-                gameView.showAlertSafely("Turno inicial saltado", "Tu turno ha sido saltado por " + topCard.getValue(), Alert.AlertType.INFORMATION);
-
-                PauseTransition pause = new PauseTransition(Duration.seconds(1));
-                pause.setOnFinished(e -> {
-                    if (!gameOver) playCpuTurn();
-                });
-                pause.play();
-            });
-        }
+        });
     }
 
     private void applyInitialDraw(int count) throws DeckEmptyException {
@@ -289,16 +315,23 @@ public class GameViewController {
 
         processingClick = true;
 
-        if (!gameModel.canUserPlay()) {
-            try {
-                // Animar la carta robada
-                UnoCard drawnCard = gameModel.drawUserCard();
-                ImageView cardView = createCardImage(drawnCard, false);
+        try {
+            // En el caso donde el usuario PUEDE jugar una carta pero decide robar
+            // debemos permitirle robar igualmente y no mostrar error
 
-                // Añadir la carta a la mano con animación
-                userHand.getChildren().add(cardView);
-                gameView.animateFadeIn(cardView, Duration.millis(500), () -> {
-                    // Pasar al turno de la CPU
+            // Animar la carta robada
+            UnoCard drawnCard = gameModel.drawUserCard();
+            ImageView cardView = createCardImage(drawnCard, false);
+
+            // Añadir la carta a la mano con animación
+            userHand.getChildren().add(cardView);
+            gameView.animateFadeIn(cardView, Duration.millis(500), () -> {
+                // Verificar si la carta recién robada se puede jugar
+                if (gameModel.isValidPlay(drawnCard)) {
+                    // La carta se puede jugar, pero el jugador decide si lo hace
+                    processingClick = false;
+                } else {
+                    // La carta no se puede jugar, pasar automáticamente al turno de la CPU
                     processingClick = false;
                     gameModel.switchTurn();
 
@@ -309,15 +342,11 @@ public class GameViewController {
                         });
                         pause.play();
                     }
-                });
-            } catch (DeckEmptyException e) {
-                gameView.showAlertSafely("Error", e.getMessage(), Alert.AlertType.ERROR);
-                processingClick = false;
-            }
-        } else {
+                }
+            });
+        } catch (DeckEmptyException e) {
+            gameView.showAlertSafely("Error", e.getMessage(), Alert.AlertType.ERROR);
             processingClick = false;
-            gameView.showAlertSafely("Tienes una carta jugable",
-                    "Debes jugar una carta que coincida con el color o valor.", Alert.AlertType.INFORMATION);
         }
     }
 
@@ -644,6 +673,7 @@ public class GameViewController {
         }
     }
 
+    // Reemplaza la clase TimerHandler existente en GameViewController.java
     private class TimerHandler implements Runnable {
         private final boolean isUserTimer;
 
@@ -665,13 +695,10 @@ public class GameViewController {
                     Platform.runLater(() -> {
                         // Si el botón aún está visible y no se ha presionado
                         if (!gameOver && unoButton.isVisible() && !userUnoClicked) {
-                            // Aplicar penalización: el usuario roba 2 cartas
+                            // Aplicar penalización: el usuario SIEMPRE roba 2 cartas
                             try {
-                                for (int i = 0; i < 2; i++) {
-                                    UnoCard penaltyCard = gameModel.drawCard();
-                                    ImageView cardView = createCardImage(penaltyCard, false);
-                                    userHand.getChildren().add(cardView);
-                                }
+                                // Llamar al método centralizado para robar 2 cartas
+                                drawCardAndUpdateHand(true, 2);
                                 unoButton.setVisible(false);
                                 gameView.showDrawCardsMessage(
                                         "Has recibido 2 cartas de penalización por no decir UNO.",
@@ -680,7 +707,7 @@ public class GameViewController {
                             } catch (DeckEmptyException e) {
                                 gameView.showAlertSafely("Error", e.getMessage(), Alert.AlertType.ERROR);
                             } finally {
-                                // CORREGIDO: Asegurar que el botón esté oculto
+                                // Asegurar que el botón esté oculto
                                 unoButton.setVisible(false);
                             }
                         } else {
@@ -712,7 +739,7 @@ public class GameViewController {
             } catch (InterruptedException ignored) {
                 // Simplemente terminar el hilo si es interrumpido
             } finally {
-                // CORREGIDO: Asegurar que los botones se oculten en el hilo de UI
+                // Asegurar que los botones se oculten en el hilo de UI
                 Platform.runLater(() -> {
                     if (isUserTimer) {
                         unoButton.setVisible(false);
@@ -740,18 +767,14 @@ public class GameViewController {
 
             // Si el jugador atrapa a la CPU antes de que declare UNO
             if (!cpuDeclaredUno && gameModel.getCpuHand().size() == 1) {
-                // Penalizar a la CPU (debe robar 2 cartas)
+                // Penalizar a la CPU - SIEMPRE debe robar exactamente 2 cartas
                 try {
+                    // Usar nuestro método centralizado para robar 2 cartas
                     drawCardAndUpdateHand(false, 2);
+                    gameView.showAlertSafely("¡Atrapada!", "¡Has atrapado a la CPU antes de que dijera UNO!\nLa CPU ha robado 2 cartas de penalización.", Alert.AlertType.INFORMATION);
                 } catch (DeckEmptyException ex) {
-                    throw new RuntimeException(ex);
+                    gameView.showAlertSafely("Error", "No hay suficientes cartas para la penalización: " + ex.getMessage(), Alert.AlertType.ERROR);
                 }
-                try {
-                    List<ImageView> cardViews = drawCardAndUpdateHand(false, 2);
-                } catch (DeckEmptyException ex) {
-                    throw new RuntimeException(ex);
-                }
-                gameView.showAlertSafely("¡Atrapada!", "¡Has atrapado a la CPU antes de que dijera UNO!", Alert.AlertType.INFORMATION);
             } else {
                 // Si el jugador presiona el botón pero la CPU no tiene una carta o ya declaró UNO
                 gameView.showAlertSafely("¡Falsa alarma!", "La CPU no tiene una carta pendiente o ya declaró UNO", Alert.AlertType.WARNING);

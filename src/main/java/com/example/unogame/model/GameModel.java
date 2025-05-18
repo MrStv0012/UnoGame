@@ -70,10 +70,13 @@ public class GameModel {
     }
 
     public boolean canUserPlay() {
+        // Simplemente llama al método genérico para verificar si hay cartas jugables
         return canPlayAnyCard(userHand);
     }
 
     public boolean canPlayAnyCard(List<UnoCard> hand) {
+        if (hand == null || hand.isEmpty()) return false;
+
         for (UnoCard card : hand) {
             if (isValidPlay(card)) {
                 return true;
@@ -84,7 +87,7 @@ public class GameModel {
 
     public boolean isValidPlay(UnoCard card) {
         // Si el juego ha terminado, ninguna carta es jugable
-        if (isGameOver()) {
+        if (isGameOver() || card == null) {
             return false;
         }
 
@@ -94,14 +97,14 @@ public class GameModel {
         }
 
         // Verificar color actual (respetando los colores elegidos para comodines)
-        if (card.getColor() == getCurrentColor()) {
+        UnoCard.Color effectiveColor = getCurrentColor();
+        if (card.getColor() == effectiveColor) {
             return true;
         }
 
         // Verificar si los valores coinciden
         return card.getValue() == topDiscard.getValue();
     }
-
     /**
      * Juega una carta para el jugador especificado
      * @param card La carta a jugar (null para CPU selecciona automáticamente)
@@ -247,7 +250,11 @@ public class GameModel {
         new TurnManager().switchTurn();
     }
 
-    public class TurnManager {
+    public void setUserTurn(boolean isUserTurn) {
+        this.isUserTurn = isUserTurn;
+    }
+
+    private class TurnManager {
         public void switchTurn() {
             isUserTurn = !isUserTurn;
         }
